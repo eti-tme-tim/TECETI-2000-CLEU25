@@ -54,3 +54,13 @@
       - kubeadm
       - kubelet
       - kubectx
+
+- name: "Add kubectl autocompletion to root bashrc"
+  ansible.builtin.blockinfile:
+    path: /root/.bashrc
+    marker: "# {mark} This part managed by Ansible"
+    block: |
+      # kubectl autocompletion
+      source <(kubectl completion bash)
+      #
+    mode: '0644'
