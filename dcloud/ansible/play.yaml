@@ -1,0 +1,142 @@
+---
+# Start testing reachability
+
+- name: Update apt cache everywhere
+  hosts: management
+
+  vars:
+     k8s_version: "v1.32"
+     k8s_apt_url: "https://pkgs.k8s.io/core:/stable:/{{ k8s_version }}/deb"
+     k8s_apt_key: "/etc/apt/keyrings/kubernetes-apt-release.key"
+     k8s_apt_gpg: "/etc/apt/keyrings/kubernetes-apt-keyring.gpg"
+
+  handlers:
+     - name: "module_file_created"
+       ansible.builtin.shell: |
+          modprobe overlay
+          modprobe br_netfilter
+     - name: "sysctl_file_created"
+       ansible.builtin.shell: |
+          sysctl -p
+     - name: "restart_containerd_service"
+       ansible.builtin.service:
+          name: containerd
+          state: restarted
+     - name: "disable_swap"
+       ansible.builtin.command: swapoff -a
+
+  tasks:
+     - name: "Ubuntu Core Packages"
+       ansible.builtin.apt:
+          update_cache: false
+          name:
+             - apt-transport-https
+             - ca-certificates
+             - curl
+             - gnupg
+             - man-db
+
+     - name: "Pre-work checks - Release.key exists"
+       ansible.builtin.stat:
+          path: "{{ k8s_apt_key }}"
+       register: release_key_exists
+
+     - name: "Fetch the K8s apt repo key"
+       ansible.builtin.get_url:
+          url: "{{ k8s_apt_url }}/Release.key"
+          dest: "{{ k8s_apt_key }}"
+          mode: 600
+       when: release_key_exists.stat.exists is false
+
+     - name: "Pre-work checks - GPG Keyring exists"
+       ansible.builtin.stat:
+          path: "{{ k8s_apt_gpg }}"
+       register: gpg_key_exists
+
+     - name: "Convert key to keyring"
+       ansible.builtin.shell: |
+          cat {{ k8s_apt_key }} | gpg --dearmor -o {{ k8s_apt_gpg }}
+       register: gpg_key_created
+       changed_when: gpg_key_created.rc != 0
+       when: gpg_key_exists.stat.exists is false
+
+     - name: "Fix mode"
+       ansible.builtin.file:
+          path: "{{ k8s_apt_gpg }}"
+          mode: 644
+
+     - name: "Add Kubernetes Apt repository"
+       ansible.builtin.apt_repository:
+          repo: "deb [signed-by={{ k8s_apt_gpg }}] {{ k8s_apt_url }} /"
+          filename: kubernetes
+          state: present
+
+     - name: "Refresh apt cache"
+       ansible.builtin.apt:
+          update_cache: true
+
+     - name: "Create k8s modprobe file"
+       ansible.builtin.lineinfile:
+          path: /etc/modules-load.d/containerd.conf
+          line:
+             - "overlay"
+             - "br_netfilter"
+          create: true
+          mode: 600
+       register: module_file_created
+
+     - name: "Update sysctl configuration"
+       ansible.builtin.lineinfile:
+          path: /etc/sysctl.d/98-kubernetes-cri.conf
+          line:
+             - net.bridge.bridge-nf-call-iptables = 1
+             - net.ipv4.ip_forward = 1
+             - net.bridge.bridge-nf-call-ip6tables = 1
+          mode: 644
+          create: true
+       notify: sysctl_file_created
+
+     - name: "Install Containerd and CNI tools"
+       ansible.builtin.apt:
+          update_cache: false
+          state: present
+          name:
+             - containerd
+             - runc
+             - kubernetes-cni
+
+     - name: "Create containerd configuration directory"
+       ansible.builtin.file:
+          path: /etc/containerd
+          mode: 600
+          state: directory
+       register: containerd_directory
+
+     - name: "Populated configuration"
+       ansible.builtin.shell: |
+          containerd config default | sed -e 's/systemd_cgroup = false/systemd_cgroup = true/' > /etc/containerd/config.toml
+       when: containerd_directory.changed is true
+       notify: restart_containerd_service
+
+     - name: "Ensure containerd is started"
+       ansible.builtin.service:
+          name: containerd
+          state: started
+          enabled: true
+
+     - name: "Remove swap from filesystems"
+       ansible.builtin.lineinfile:
+          state: absent
+          path: /etc/fstab
+          regexp: '^.+ none swap .*$'
+       notify: disable_swap
+
+     - name: "Install Kubernetes tools"
+       ansible.builtin.apt:
+          update_cache: false
+          state: present
+          name:
+             - kubectl
+             - kubeadm
+             - kubelet
+             - kubectx
