@@ -22,3 +22,14 @@
     - common
     - containers
     - kubernetes
+
+- name: Deploy Helm
+  hosts: management,control_nodes
+
+  vars:
+    helm_apt_url: "https://baltocdn.com/helm"
+    helm_apt_key: "/etc/apt/keyrings/helm-apt-release.key"
+    helm_apt_gpg: "/etc/apt/keyrings/helm-apt-keyring.gpg"
+
+  roles:
+    - helm

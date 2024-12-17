@@ -1,0 +1,49 @@
+- name: "Ubuntu Core Packages for Helm Setup"
+  ansible.builtin.apt:
+    update_cache: false
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+
+- name: "Pre-work checks - Helm signing key exists"
+  ansible.builtin.stat:
+    path: "{{ helm_apt_key }}"
+  register: helm_release_key_exists
+
+- name: "Fetch the Helm apt repo key"
+  ansible.builtin.get_url:
+    url: "{{ helm_apt_url }}/signing.asc"
+    dest: "{{ helm_apt_key }}"
+    mode: '0600'
+  when: helm_release_key_exists.stat.exists is false
+
+- name: "Pre-work checks - Helm GPG Keyring exists"
+  ansible.builtin.stat:
+    path: "{{ helm_apt_gpg }}"
+  register: helm_gpg_key_exists
+
+- name: "Convert Helm key to keyring"
+  ansible.builtin.shell: |
+    gpg --dearmor -o {{ helm_apt_gpg }} < {{ helm_apt_key }}
+  register: helm_gpg_key_created
+  changed_when: helm_gpg_key_created.rc != 0
+  when: helm_gpg_key_exists.stat.exists is false
+
+- name: "Fix Helm GPG file mode"
+  ansible.builtin.file:
+    path: "{{ helm_apt_gpg }}"
+    mode: '0644'
+
+- name: "Add Helm Apt repository"
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by={{ helm_apt_gpg }}] {{ helm_apt_url }}/stable/debian/ all main"
+    filename: helm-stable-debian
+    state: present
+
+- name: "Install Helm"
+  ansible.builtin.apt:
+    update-cache: true
+    name: helm
+    state: present
