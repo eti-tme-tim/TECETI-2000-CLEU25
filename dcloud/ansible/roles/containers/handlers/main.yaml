@@ -1,0 +1,22 @@
+- name: "Containers: module_file_created"
+  ansible.builtin.shell: |
+    modprobe overlay
+    modprobe br_netfilter
+
+- name: "Containers: sysctl_file_created"
+  ansible.builtin.shell: |
+    sysctl -p
+
+- name: "Containers: containerd_configuration"
+  ansible.builtin.shell: |
+    containerd config default > /etc/containerd/config.toml
+    sed -i -e 's/systemd_cgroup = false/systemd_cgroup = true/' /etc/containerd/config.toml
+    systemctl restart containerd
+
+- name: "Containers: restart_containerd_service"
+  ansible.builtin.service:
+    name: containerd
+    state: restarted
+
+- name: "Containers: disable_swap"
+  ansible.builtin.command: swapoff -a
