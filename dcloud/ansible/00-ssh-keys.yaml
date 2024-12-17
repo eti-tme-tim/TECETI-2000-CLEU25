@@ -1,0 +1,33 @@
+---
+# Collect SSH Known Host Keys Everywhere.  This is a "one time" operation
+# but should be run everytime there's a new node added or rebuilt
+
+- name: Collect SSH Keys for the target hosts
+  hosts: management,k8s_cluster
+  gather_facts: false
+  connection: local
+
+  vars:
+    ansible_python_interpreter: python3
+    known_hosts: "~/.ssh/known_hosts"
+
+  tasks:
+    - name: Run SSH Keyscan
+      ansible.builtin.command: ssh-keyscan {{ ansible_host | default(inventory_hostname) }}
+      register: "host_keys"
+      changed_when: false
+
+    - name: "Ensure known hosts file exists"
+      ansible.builtin.file:
+        path: "{{ known_hosts }}"
+        state: file
+        mode: '0600'
+
+    - name: "Add known host blocks"
+      ansible.builtin.blockinfile:
+        dest: "{{ known_hosts }}"
+        marker: "# {mark} This part managed by Ansible"
+        block: |
+          {% for h in groups['all'] if hostvars[h].host_keys is defined %}
+          {{ hostvars[h].host_keys.stdout }}
+          {% endfor %}
