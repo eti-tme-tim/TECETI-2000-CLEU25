@@ -10,7 +10,7 @@
         update_cache: true
 
 - name: Deploy Kubernetes Dependencies
-  hosts: management
+  hosts: management,k8s_cluster
 
   vars:
     k8s_version: "v1.32"
@@ -19,5 +19,6 @@
     k8s_apt_gpg: "/etc/apt/keyrings/kubernetes-apt-keyring.gpg"
 
   roles:
+    - common
     - containers
     - kubernetes
