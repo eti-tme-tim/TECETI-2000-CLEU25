@@ -1,0 +1,3 @@
+- name: Reset machines hostname
+  ansible.builtin.command: hostnamectl hostname {{ inventory_hostname }}
+  when: ansible_hostname != inventory_hostname
