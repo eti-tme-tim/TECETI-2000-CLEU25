@@ -1,3 +1,11 @@
 - name: Reset machines hostname
   ansible.builtin.command: hostnamectl hostname {{ inventory_hostname }}
   when: ansible_hostname != inventory_hostname
+
+- name: Populate /etc/hosts everywhere
+  ansible.builtin.lineinfile:
+    dest: /etc/hosts
+    regexp: '{{ hostvars[item].ansible_host }}.*{{ item }}$'
+    line: "{{ hostvars[item].ansible_host }} {{ item }}"
+    state: present
+  with_items: "{{ groups.all }}"
