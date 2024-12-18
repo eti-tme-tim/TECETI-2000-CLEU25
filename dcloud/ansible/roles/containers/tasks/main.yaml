@@ -7,7 +7,7 @@
         br_netfilter
      create: true
      mode: '0600'
-  notify: "Containers: module_file_created"
+  notify: "Containers: modprobe container modules"
 
 - name: "Update sysctl configuration"
   ansible.builtin.blockinfile:
@@ -19,23 +19,81 @@
         net.bridge.bridge-nf-call-ip6tables = 1
      mode: '0644'
      create: true
-  notify: "Containers: sysctl_file_created"
+  notify: "Containers: reload sysctl system"
 
-- name: "Install Containerd and CNI tools"
+- name: "Ubuntu Core Packages for Docker Setup"
   ansible.builtin.apt:
      update_cache: false
+     name:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg
+
+- name: "Pre-work checks - Docker key exists"
+  ansible.builtin.stat:
+     path: "{{ docker_apt_key }}"
+  register: docker_key_exists
+
+- name: "Fetch the Docker apt repo key"
+  ansible.builtin.get_url:
+     url: "{{ docker_apt_url }}/gpg"
+     dest: "{{ docker_apt_key }}"
+     mode: '0600'
+  when: docker_key_exists.stat.exists is false
+
+- name: "Pre-work checks - Docker GPG exists"
+  ansible.builtin.stat:
+     path: "{{ docker_apt_gpg }}"
+  register: docker_gpg_exists
+
+- name: "Convert Docker key to gpg"
+  ansible.builtin.shell: |
+     gpg --dearmor -o {{ docker_apt_gpg }} < {{ docker_apt_key }}
+  when: docker_gpg_exists.stat.exists is false
+
+- name: "Fix mode"
+  ansible.builtin.file:
+     path: "{{ docker_apt_gpg }}"
+     mode: '0644'
+
+- name: "Add Docker Apt repository"
+  ansible.builtin.apt_repository:
+     repo: "deb [arch=amd64 signed-by={{ docker_apt_gpg }}] {{ docker_apt_url }} noble stable"
+     filename: docker
+     state: present
+
+- name: "Install Docker and Containerd"
+  ansible.builtin.apt:
+     update_cache: true
      state: present
      name:
-        - containerd
-        - runc
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+        - docker-buildx-plugin
+        - docker-compose-plugin
 
-- name: "Create containerd configuration directory"
+- name: "Ensure containerd configuration directory exists"
   ansible.builtin.file:
      path: /etc/containerd
-     mode: '0600'
+     mode: '0755'
      state: directory
-  register: containerd_directory
-  notify: "Containers: containerd_configuration"
+
+- name: "Add containerd configuration file"
+  ansible.builtin.copy:
+     src: containerd.config.toml
+     dest: /etc/containerd/config.toml
+     mode: '0644'
+     owner: root
+     group: root
+  notify: "Containers: restart containerd service"
+
+- name: "Ensure Docker is started"
+  ansible.builtin.service:
+     name: docker
+     state: started
+     enabled: true
 
 - name: "Ensure containerd is started"
   ansible.builtin.service:
@@ -48,4 +106,4 @@
      state: absent
      path: /etc/fstab
      regexp: '^.+ none swap .*$'
-  notify: "Containers: disable_swap"
+  notify: "Containers: disable swap"

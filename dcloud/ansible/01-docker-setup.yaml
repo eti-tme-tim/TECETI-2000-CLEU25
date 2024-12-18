@@ -1,0 +1,21 @@
+---
+# Start testing reachability
+
+- name: Update apt cache everywhere
+  hosts: management,k8s_cluster
+
+  tasks:
+    - name: "Refresh apt cache"
+      ansible.builtin.apt:
+        update_cache: true
+
+- name: Deploy Container Environment
+  hosts: management,k8s_cluster
+
+  vars:
+    docker_apt_url: "https://download.docker.com/linux/ubuntu"
+    docker_apt_key: "/etc/apt/keyrings/docker-apt-release.key"
+    docker_apt_gpg: "/etc/apt/keyrings/docker-apt-keyring.gpg"
+
+  roles:
+    - containers
