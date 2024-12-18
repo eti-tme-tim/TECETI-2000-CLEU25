@@ -19,7 +19,6 @@
     k8s_apt_gpg: "/etc/apt/keyrings/kubernetes-apt-keyring.gpg"
 
   roles:
-    - common
     - containers
     - kubernetes
 

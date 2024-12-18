@@ -31,3 +31,9 @@
           {% for h in groups['all'] if hostvars[h].host_keys is defined %}
           {{ hostvars[h].host_keys.stdout }}
           {% endfor %}
+
+- name: Apply the common role
+  hosts: management,k8s_cluster
+
+  roles:
+    - common
