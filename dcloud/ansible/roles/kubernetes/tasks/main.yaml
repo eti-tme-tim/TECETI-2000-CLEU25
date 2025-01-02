@@ -6,7 +6,6 @@
       - ca-certificates
       - curl
       - gnupg
-      - man-db
 
 - name: "Pre-work checks - Release.key exists"
   ansible.builtin.stat:
@@ -42,7 +41,6 @@
     repo: "deb [signed-by={{ k8s_apt_gpg }}] {{ k8s_apt_url }} /"
     filename: kubernetes
     state: present
-
 
 - name: "Install Kubernetes tools"
   ansible.builtin.apt:
