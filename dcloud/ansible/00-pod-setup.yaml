@@ -32,8 +32,54 @@
           {{ hostvars[h].host_keys.stdout }}
           {% endfor %}
 
+# Generate an SSH key pair for easy login between nodes
+- name: Generate SSH key for cluster login
+  hosts: management
+  gather_facts: false
+  connection: local
+
+  vars:
+    ansible_python_interpreter: python3
+    key_filename: k8s-cluster
+
+  tasks:
+    - name: Validate key existence
+      ansible.builtin.stat:
+        path: "{{ key_filename }}"
+      register: cluster_ssh_key
+
+    - name: Generate key
+      ansible.builtin.command: ssh-keygen -q -f {{ key_filename }} -N ''
+      when: cluster_ssh_key.stat.exists is false
+
 - name: Apply the common role
   hosts: management,k8s_cluster
 
+  vars:
+    key_filename: k8s-cluster
+
   roles:
     - common
+
+  tasks:
+    - name: "Ensure root SSH configuration exists"
+      ansible.builtin.file:
+        path: /root/.ssh
+        mode: '0700'
+        state: directory
+
+    - name: "Copy authorized key to each node"
+      ansible.builtin.copy:
+        src: "{{ key_filename }}.pub"
+        dest: /root/.ssh/authorized_keys
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: "Copy private key to each node"
+      ansible.builtin.copy:
+        src: "{{ key_filename }}"
+        dest: "/root/.ssh/id_ed25519"
+        mode: '0600'
+        owner: root
+        group: root
