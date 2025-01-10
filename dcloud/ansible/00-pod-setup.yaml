@@ -17,13 +17,13 @@
       register: "host_keys"
       changed_when: false
 
-    - name: "Ensure known hosts file exists"
+    - name: "Ensure workstation known hosts file exists"
       ansible.builtin.file:
         path: "{{ known_hosts }}"
         state: file
         mode: '0600'
 
-    - name: "Add known host blocks"
+    - name: "Add known host blocks to workstation known hosts"
       ansible.builtin.blockinfile:
         dest: "{{ known_hosts }}"
         marker: "# {mark} This part managed by Ansible"
