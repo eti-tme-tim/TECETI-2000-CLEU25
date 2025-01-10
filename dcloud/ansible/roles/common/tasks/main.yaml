@@ -10,6 +10,46 @@
     state: present
   with_items: "{{ groups.all }}"
 
+- name: "Ensure root known hosts file exists"
+  ansible.builtin.stat:
+    path: /root/.ssh/known_hosts
+  register: root_known_hosts
+
+- name: "Ensure root known hosts file exists"
+  ansible.builtin.file:
+    path: /root/.ssh/known_hosts
+    state: touch
+    mode: '0600'
+  when: root_known_hosts.stat.exists is false
+
+- name: Run SSH Keyscan Using IP Addresses
+  ansible.builtin.command: ssh-keyscan {{ ansible_host }} | /usr/bin/sort
+  register: "numbered_host_keys"
+  changed_when: false
+
+- name: "Add numbered known host blocks"
+  ansible.builtin.blockinfile:
+    dest: /root/.ssh/known_hosts
+    marker: "# {mark} This part managed by Ansible"
+    block: |
+      {% for h in groups['all'] if hostvars[h].host_keys is defined %}
+      {{ hostvars[h].numbered_host_keys.stdout }}
+      {% endfor %}
+
+- name: Run SSH Keyscan Using Hostnames
+  ansible.builtin.command: ssh-keyscan {{ inventory_hostname }} | /usr/bin/sort
+  register: "named_host_keys"
+  changed_when: false
+
+- name: "Add named known host blocks"
+  ansible.builtin.blockinfile:
+    dest: /root/.ssh/known_hosts
+    marker: "# {mark} Named Host Keys managed by Ansible"
+    block: |
+      {% for h in groups['all'] if hostvars[h].host_keys is defined %}
+      {{ hostvars[h].named_host_keys.stdout }}
+      {% endfor %}
+
 - name: "Install Bash Completion"
   ansible.builtin.apt:
     update_cache: true
