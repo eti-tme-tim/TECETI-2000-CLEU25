@@ -40,7 +40,6 @@
 
   vars:
     ansible_python_interpreter: python3
-    key_filename: k8s-cluster
 
   tasks:
     - name: Validate key existence
@@ -54,9 +53,6 @@
 
 - name: Apply the common role
   hosts: management,k8s_cluster
-
-  vars:
-    key_filename: k8s-cluster
 
   roles:
     - common

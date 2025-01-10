@@ -3,6 +3,7 @@ all:
     ansible_python_interpreter: /usr/bin/python3.12
     ansible_user: root
     ansible_password: C1sco12345
+    key_filename: k8s-cluster
   children:
     management:
       hosts:
