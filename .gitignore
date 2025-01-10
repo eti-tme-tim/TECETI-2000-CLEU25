@@ -9,6 +9,10 @@
 ### VS Code
 **/.vscode
 
+### Ansible
+k8s-cluster
+k8s-cluster.pub
+
 ### Terraform from GitHub
 
 # Local .terraform directories
