@@ -9,3 +9,10 @@
     line: "{{ hostvars[item].ansible_host }} {{ item }}"
     state: present
   with_items: "{{ groups.all }}"
+
+- name: "Install Bash Completion"
+  ansible.builtin.apt:
+    update_cache: true
+    state: present
+    name:
+      - bash-completion
