@@ -27,6 +27,8 @@ Kubernetes repository setup and utility installation. No cluster creation!
 ansible-playbook 02-kubernetes-setup.yaml
 ```
 
+In the dCloud lab environment, we save the current state of the pod before proceeding to the different Kubernetes cluster creations.
+
 Manual cluster creation (for now) is a manual step and found in [kubernetes](../kubernetes/README.md).
 
 
