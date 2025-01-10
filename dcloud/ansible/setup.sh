@@ -7,4 +7,3 @@ source .venv/bin/activate
 # Configure virtual environment
 pip install --upgrade pip
 pip install -r requirements.txt
-
