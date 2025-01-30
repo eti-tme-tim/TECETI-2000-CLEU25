@@ -62,3 +62,47 @@
       source <(kubectl completion bash)
       #
     mode: '0644'
+
+- name: "PV Setup: Check if /mnt/disk.img exist"
+  ansible.builtin.stat:
+    path: "/mnt/disk.img"
+    get_checksum: false
+    get_mime: false
+  register: mnt_disk_img_exists
+
+- name: "PV Setup: Create /mnt/disk.img"
+  ansible.builtin.shell: |
+    dd if=/dev/zero of=/mnt/disk.img bs=1G count=30
+  register: mnt_disk_img_created
+  changed_when: mnt_disk_img_created.rc != 0
+  when: mnt_disk_img_exists.stat.exists is false
+
+- name: "PV Setup: Copy in loopback service file"
+  ansible.builtin.copy:
+    src: loops-setup.service
+    dest: /etc/systemd/system/loops-setup.service
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: "PV Setup: Start/enable loopback service"
+  ansible.builtin.service:
+    name: loops-setup
+    state: started
+    enabled: true
+
+- name: "PV setup: Check if /dev/loop0 attached"
+  ansible.builtin.shell: |
+    losetup /dev/loop0 2>/dev/null 1>/dev/null
+  register: check_dev_loop_zero
+  changed_when: check_dev_loop_zero.rc != 0
+
+- name: "PV setup: Attach /dev/loop0"
+  ansible.builtin.shell: |
+    losetup /dev/loop0 /mnt/disk.img
+  when: check_dev_loop_zero.rc == 1
+
+- name: "PV setup: Create VG myvg1 with /dev/loop0"
+  community.general.lvg:
+    vg: myvg1
+    pvs: /dev/loop0

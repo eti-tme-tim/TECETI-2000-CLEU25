@@ -1,0 +1,18 @@
+[Unit]
+Description=Setup loop devices
+DefaultDependencies=no
+Conflicts=umount.target
+Before=local-fs.target
+After=systemd-udevd.service
+Required=systemd-udevd.service
+
+[Service]
+Type=oneshot
+ExecStart=/sbin/losetup /dev/loop0 /mnt/disk.img
+ExecStop=/sbin/losetup -d /dev/loop0
+TimeoutSec=60
+RemainAfterExit=yes
+
+[Install]
+WantedBy=local-fs.target
+Also=systemd-udevd.service
