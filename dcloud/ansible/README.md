@@ -55,3 +55,4 @@ Manual cluster creation (for now) is a manual step and found in [kubernetes](../
 ### Ansible References
 
 - ["no-changed-when"](https://ansible.readthedocs.io/projects/lint/rules/no-changed-when/)
+- [kubeadm cluster deployment](https://github.com/kairen/kubeadm-ansible/blob/master/roles/kubernetes/node/tasks/join.yml)
