@@ -13,6 +13,9 @@
 k8s-cluster
 k8s-cluster.pub
 
+### Kubernetes
+kubeconfig-*
+
 ### Terraform from GitHub
 
 # Local .terraform directories
