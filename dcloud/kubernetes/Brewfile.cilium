@@ -1,0 +1,3 @@
+brew "cilium-cli"
+brew "hubble"
+brew "helm"
